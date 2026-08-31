@@ -110,6 +110,7 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+  const todayDateStr = useMemo(() => getLocalDateString(new Date()), []);
 
   // 1. 날짜별 복용 로그 매핑 (로컬 타임존 기준 YYYY-MM-DD)
   const logsByDate = useMemo(() => {
@@ -227,6 +228,7 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
             const dayLogs = logsByDate.get(item.dateStr) || [];
             const count = dayLogs.length;
             const isSelected = item.dateStr === selectedDateStr;
+            const isToday = item.dateStr === todayDateStr && item.isCurrentMonth;
 
             // 달성 상태별 배지 색상
             let statusDot = null;
@@ -244,13 +246,19 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
                 className={`h-14 p-1.5 rounded-lg border flex flex-col justify-between text-left transition-all ${!item.isCurrentMonth
                   ? 'bg-gray-50/50 border-gray-100 text-gray-300 cursor-not-allowed'
                   : isSelected
-                    ? 'bg-teal-50 border-teal-500 text-teal-950 shadow-xs'
-                    : 'bg-white border-gray-200 hover:border-gray-300 text-gray-800'
+                    ? 'bg-teal-50 border-teal-500 ring-2 ring-teal-500/20 text-teal-950 shadow-xs'
+                    : isToday
+                      ? 'bg-teal-50/40 border-teal-400 hover:border-teal-500 text-gray-900 shadow-2xs'
+                      : 'bg-white border-gray-200 hover:border-gray-300 text-gray-800'
                   }`}
               >
                 <div className="flex items-center justify-between">
                   <span
-                    className={`text-xs font-semibold ${isSelected ? 'text-teal-700' : ''
+                    className={`text-xs font-semibold ${isToday
+                      ? 'w-5 h-5 flex items-center justify-center rounded-full bg-teal-600 text-white font-bold text-[11px] shadow-2xs'
+                      : isSelected
+                        ? 'text-teal-700 font-bold'
+                        : ''
                       }`}
                   >
                     {item.dayNum}
@@ -269,6 +277,12 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
 
         {/* 범례 (Legend) */}
         <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5">
+            <span className="w-4 h-4 flex items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold shadow-2xs">
+              {new Date().getDate()}
+            </span>
+            <span>TODAY</span>
+          </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-teal-500"></span>
             <span>완벽 달성 (3회 이상)</span>
