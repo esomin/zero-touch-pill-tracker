@@ -14,6 +14,16 @@ const BOTTLE_NAME_FALLBACK: Record<string, string> = {
   BOTTLE_03: '취침 전 비염약',
 };
 
+// 로컬 YYYY-MM-DD 날짜 문자열 추출 헬퍼 (타임존 오프셋 반영)
+const getLocalDateString = (d: Date | string): string => {
+  const date = typeof d === 'string' ? new Date(d) : d;
+  if (isNaN(date.getTime())) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 // 백엔드 전달 복용 성과 데이터(compliance_status, diff_minutes) 기반 배지 렌더링
 const renderIntakeStatusBadge = (
   complianceStatus?: 'ON_TIME' | 'EARLY' | 'LATE',
@@ -60,7 +70,11 @@ const renderIntakeStatusBadge = (
 
   const takenTotalMin = takenDate.getHours() * 60 + takenDate.getMinutes();
   const targetTotalMin = tHour * 60 + tMin;
-  const diffMin = takenTotalMin - targetTotalMin;
+  let diffMin = takenTotalMin - targetTotalMin;
+
+  // 24시간 순환 보정
+  if (diffMin > 720) diffMin -= 1440;
+  else if (diffMin < -720) diffMin += 1440;
 
   if (Math.abs(diffMin) <= 60) {
     return (
@@ -69,14 +83,14 @@ const renderIntakeStatusBadge = (
       </Badge>
     );
   } else if (diffMin < -60) {
-    const hoursEarly = Math.round(Math.abs(diffMin) / 60);
+    const hoursEarly = Math.max(1, Math.round(Math.abs(diffMin) / 60));
     return (
       <Badge color="blue" variant="light" size="sm">
         조기 복용 ({hoursEarly}시간 전)
       </Badge>
     );
   } else {
-    const hoursLate = Math.round(diffMin / 60);
+    const hoursLate = Math.max(1, Math.round(diffMin / 60));
     return (
       <Badge color="orange" variant="light" size="sm">
         지연 복용 ({hoursLate}시간 후)
@@ -91,19 +105,21 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateStr, setSelectedDateStr] = useState(
-    new Date().toISOString().slice(0, 10)
+    getLocalDateString(new Date())
   );
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // 1. 날짜별 복용 로그 매핑
+  // 1. 날짜별 복용 로그 매핑 (로컬 타임존 기준 YYYY-MM-DD)
   const logsByDate = useMemo(() => {
     const map = new Map<string, MedicationLog[]>();
     logs.forEach((log) => {
-      const dStr = log.taken_at.slice(0, 10);
-      if (!map.has(dStr)) map.set(dStr, []);
-      map.get(dStr)!.push(log);
+      const dStr = getLocalDateString(log.taken_at);
+      if (dStr) {
+        if (!map.has(dStr)) map.set(dStr, []);
+        map.get(dStr)!.push(log);
+      }
     });
     return map;
   }, [logs]);
@@ -121,7 +137,7 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
     for (let i = 0; i < startDayOfWeek; i++) {
       const prevDate = new Date(year, month, -startDayOfWeek + i + 1);
       days.push({
-        dateStr: prevDate.toISOString().slice(0, 10),
+        dateStr: getLocalDateString(prevDate),
         dayNum: prevDate.getDate(),
         isCurrentMonth: false,
       });
@@ -155,7 +171,8 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
 
   // 약통별 준수율 계산
   const bottleStatsList = useMemo(() => {
-    const totalDays = Math.max(1, new Set(logs.map((l) => l.taken_at.slice(0, 10))).size);
+    const uniqueDays = new Set(logs.map((l) => getLocalDateString(l.taken_at)).filter(Boolean));
+    const totalDays = Math.max(1, uniqueDays.size);
     return bottles.map((b) => {
       const bLogs = logs.filter((l) => l.bottle_id === b.bottle_id).length;
       const rate = Math.min(100, Math.round((bLogs / totalDays) * 100));
@@ -310,7 +327,8 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
                   bottleMap.get(log.bottle_id) ||
                   BOTTLE_NAME_FALLBACK[log.bottle_id] ||
                   log.bottle_id;
-                const logTime = new Date(log.taken_at).toLocaleTimeString([], {
+                const logTime = new Date(log.taken_at).toLocaleTimeString('ko-KR', {
+                  hour12: false,
                   hour: '2-digit',
                   minute: '2-digit',
                   second: '2-digit',
@@ -336,7 +354,7 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="mb-0.5">
+                      <div className="mb-1">
                         {renderIntakeStatusBadge(
                           log.compliance_status,
                           log.diff_minutes,
@@ -344,7 +362,7 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
                           targetBottle?.target_time
                         )}
                       </div>
-                      <div className="text-[11px] text-gray-400 font-mono">{logTime}</div>
+                      <div className="text-[11px] text-gray-400 font-mono pr-1.5">{logTime}</div>
                     </div>
                   </div>
                 );

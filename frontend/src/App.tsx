@@ -334,7 +334,7 @@ function App() {
             {/* 상단 1열 가로 배치: 복약 순응도 대시보드 */}
             <AdherenceDashboard
               stats={stats}
-              activeDaysCount={new Set(logs.map((l) => l.taken_at.slice(0, 10))).size || 1}
+              activeDaysCount={new Set(logs.map((l) => (l.taken_at ? getLocalDateStr(new Date(l.taken_at)) : '')).filter(Boolean)).size || 1}
             />
 
             {/* 하단 2열 배치: 좌측 약통별 복용 현황, 우측 실시간 복용 이력 타임라인 */}

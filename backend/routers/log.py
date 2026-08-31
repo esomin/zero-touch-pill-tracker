@@ -38,10 +38,14 @@ class AdherenceStatsResponse(BaseModel):
     bottle_stats: dict
 
 
+KST = timezone(timedelta(hours=9))
+
+
 def compute_compliance_status(taken_at_str: str, target_time_str: Optional[str] = None) -> tuple[str, int]:
     """
     약통 설정 시각과 실제 복용 시각을 비교하여 compliance_status 및 diff_minutes 산출
-    - compliance_status: 'ON_TIME' | 'EARLY' | 'LATE'
+    - 한국 표준시(KST: UTC+9) 기준으로 시각을 환산하여 오차를 계산합니다.
+    - compliance_status: 'ON_TIME' (±60분 이내) | 'EARLY' | 'LATE'
     - diff_minutes: 설정 시각 대비 복용 오차 분 (음수=조기 복용, 양수=지연 복용)
     """
     if not target_time_str:
@@ -49,6 +53,12 @@ def compute_compliance_status(taken_at_str: str, target_time_str: Optional[str] 
 
     try:
         taken_dt = datetime.fromisoformat(taken_at_str.replace("Z", "+00:00"))
+        # 한국 표준시(KST: UTC+9)로 변환
+        if taken_dt.tzinfo is not None:
+            taken_dt = taken_dt.astimezone(KST)
+        else:
+            taken_dt = taken_dt.replace(tzinfo=KST)
+
         parts = target_time_str.split(":")
         t_hour = int(parts[0])
         t_min = int(parts[1]) if len(parts) > 1 else 0
@@ -56,6 +66,12 @@ def compute_compliance_status(taken_at_str: str, target_time_str: Optional[str] 
         taken_total_min = taken_dt.hour * 60 + taken_dt.minute
         target_total_min = t_hour * 60 + t_min
         diff_min = taken_total_min - target_total_min
+
+        # 24시간 순환 보정 (예: 자정 전후 복용)
+        if diff_min > 720:
+            diff_min -= 1440
+        elif diff_min < -720:
+            diff_min += 1440
 
         if abs(diff_min) <= 60:
             status = "ON_TIME"
@@ -90,6 +106,10 @@ def calculate_streak(logs: list[dict]) -> int:
         if taken_at_str:
             try:
                 dt = datetime.fromisoformat(taken_at_str.replace("Z", "+00:00"))
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(KST)
+                else:
+                    dt = dt.replace(tzinfo=KST)
                 unique_dates.add(dt.date())
             except Exception:
                 pass
@@ -97,7 +117,7 @@ def calculate_streak(logs: list[dict]) -> int:
     if not unique_dates:
         return 0
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(KST).date()
     yesterday = today - timedelta(days=1)
 
     if today in unique_dates:
@@ -188,11 +208,15 @@ async def get_logs(
         if last_dt is None or abs((last_dt - taken_dt).total_seconds()) >= 60.0:
             last_times_by_bottle[b_id] = taken_dt
 
-            # compliance_status 및 diff_minutes가 문서에 없으면 동적 계산 후 채움
-            if "compliance_status" not in doc or doc["compliance_status"] is None:
-                c_status, diff_m = compute_compliance_status(taken_str, target_time_map.get(b_id))
+            # target_time이 존재하는 경우 정확한 compliance_status 및 diff_minutes 갱신
+            target_time = target_time_map.get(b_id)
+            if target_time:
+                c_status, diff_m = compute_compliance_status(taken_str, target_time)
                 doc["compliance_status"] = c_status
                 doc["diff_minutes"] = diff_m
+            elif "compliance_status" not in doc or doc["compliance_status"] is None:
+                doc["compliance_status"] = "ON_TIME"
+                doc["diff_minutes"] = 0
 
             filtered_docs.append(doc)
 
@@ -242,7 +266,7 @@ async def get_adherence_stats():
         bottle_counts[b_id] = bottle_counts.get(b_id, 0) + 1
 
     # 최근 7일간 복용 기록 수 계산
-    now = datetime.now(timezone.utc)
+    now = datetime.now(KST)
     seven_days_ago = now - timedelta(days=7)
     recent_7days_logs = []
     for log in all_logs:
@@ -250,6 +274,10 @@ async def get_adherence_stats():
         if taken_at_str:
             try:
                 dt = datetime.fromisoformat(taken_at_str.replace("Z", "+00:00"))
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(KST)
+                else:
+                    dt = dt.replace(tzinfo=KST)
                 if dt >= seven_days_ago:
                     recent_7days_logs.append(log)
             except Exception:

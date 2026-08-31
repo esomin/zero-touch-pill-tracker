@@ -76,7 +76,12 @@ export const MedicationLogList: React.FC<MedicationLogListProps> = ({
               <div className="text-right">
                 <div className="text-xs font-semibold text-teal-600">복용 완료</div>
                 <div className="text-[11px] text-gray-400 font-mono">
-                  {logDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  {logDate.toLocaleTimeString('ko-KR', {
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
                 </div>
               </div>
             </div>

@@ -117,8 +117,12 @@ export const BottleCard: React.FC<BottleCardProps> = ({
         {lastTakenTime && (
           <div className="text-right">
             <span className="text-[11px] text-gray-400 block">최근 복용 시각</span>
-            <span className="font-semibold text-teal-600">
-              {new Date(lastTakenTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <span className="font-semibold text-teal-600 font-mono">
+              {new Date(lastTakenTime).toLocaleTimeString('ko-KR', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
             </span>
           </div>
         )}
