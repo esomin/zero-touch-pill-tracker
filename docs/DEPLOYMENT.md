@@ -35,31 +35,28 @@ cd zero-touch-pill-tracker
 ```
 
 ### 3단계. 환경 변수 설정
-`.env.docker.example`을 복사하여 `.env` 파일을 생성하고 서버 환경에 맞게 값을 수정합니다.
+`.env.docker.example`을 복사하여 `.env`를 생성하고, `sed` 명령어로 Atlas 주소와 공인 IP를 교체합니다.
+
 ```bash
+# 1) 템플릿 복사
 cp .env.docker.example .env
+
+# 2) MongoDB Atlas 연결 문자열 치환 (복사한 Atlas 주소와 비밀번호 입력)
+sed -i 's#YOUR_MONGO_URI#mongodb+srv://admin:실제비밀번호@cluster0.xxxxx.mongodb.net/?appName=Cluster0#' .env
+
+# 3) 서버 외부 공인 IP 치환 (실제 서버 공인 IP 입력)
+sed -i 's#YOUR_SERVER_IP#34.xxx.xxx.xxx#g' .env
+
+# 4) (선택) 포트 80이 이미 사용 중인 경우 다른 포트(예: 8080)로 변경
+# .env.docker.example 기본값이 8080으로 지정되어 있으며, 변경 시:
+# sed -i 's#FRONTEND_PORT=8080#FRONTEND_PORT=8080#' .env
 ```
 
-`.env` 설정 항목 예시:
-```env
-# ── [백엔드 DB 설정] ──────────────────────────────────────────
-# 방법 A) 클라우드 MongoDB Atlas 연결 시 (기본 권장)
-MONGO_URI=mongodb+srv://admin:password@prod-cluster.bat4mdb.mongodb.net/?appName=prod-cluster
+> **포트 접근 주의**: `FRONTEND_PORT=8080`으로 배포할 경우, 브라우저에서 `http://<서버_IP>:8080`으로 접속해야 하며 GCP 방화벽(VPC 방화벽 규칙)에서 `tcp:8080` 포트가 열려 있어야 합니다.
 
-# 방법 B) 서버 내 로컬 MongoDB 컨테이너 연결 시 (profile with-mongo 사용 시)
-# MONGO_URI=mongodb://admin:password@mongodb:27017/med_tracker?authSource=admin
 
-DB_NAME=med_tracker
-BACKEND_PORT=8000
 
-# ── [프론트엔드 빌드 설정] ──────────────────────────────────────
-# 사용자가 브라우저에서 접근할 서버의 공인 IP 또는 도메인 주소
-VITE_API_URL=http://<서버_공인_IP_또는_도메인>:8000
-VITE_WS_URL=ws://<서버_공인_IP_또는_도메인>:8000
-FRONTEND_PORT=80
-```
 
-> **주의**: `VITE_API_URL`과 `VITE_WS_URL`은 브라우저에서 실행되는 프론트엔드가 백엔드 API/웹소켓에 접근하는 주소이므로, `localhost`가 아닌 **실제 서버의 외부 공인 IP 또는 도메인**을 입력해야 합니다.
 
 ### 4단계. 서비스 빌드 및 백그라운드 실행
 
