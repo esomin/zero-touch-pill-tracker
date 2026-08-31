@@ -6,6 +6,26 @@ import streamlit as st
 from imu_simulator import BOTTLE_PRESETS, generate_imu
 from shared_state import params as _params  # 모듈 캐시로 단일 인스턴스 보장
 from ws_emitter import start_stream
+from datetime import datetime, timezone, timedelta
+
+KST = timezone(timedelta(hours=9))
+
+
+def compute_sim_timestamp(offset_days: int = 0, custom_time: str = "현재 시각") -> str:
+    """
+    KST(한국 표준시)를 기준으로 시뮬레이션 타임스탬프를 생성합니다.
+    custom_time이 '12:30 (점심)'인 경우 오늘 KST 12:30:00 시각을 생성합니다.
+    """
+    now_kst = datetime.now(KST) + timedelta(days=offset_days)
+    if custom_time and custom_time != "현재 시각":
+        try:
+            hh, mm = map(int, custom_time.split()[0].split(":"))
+            target_dt = now_kst.replace(hour=hh, minute=mm, second=0, microsecond=0)
+            return target_dt.isoformat()
+        except Exception:
+            return now_kst.isoformat()
+    return now_kst.isoformat()
+
 
 st.set_page_config(page_title="Zero-Touch Pill Tracker Sensor Simulator", layout="wide")
 
@@ -129,7 +149,6 @@ with col_control:
             stop_event = threading.Event()
 
             def get_reading() -> dict:
-                from datetime import datetime, timezone, timedelta
                 impulse = _params.get("trigger_impulse", False)
                 _params["trigger_impulse"] = False
                 imu = generate_imu(
@@ -139,19 +158,12 @@ with col_control:
                     impulse,
                 )
 
-                # 날짜 및 시간 오프셋 적용 타임스탬프 생성
-                base_dt = datetime.now(timezone.utc) + timedelta(days=_params.get("date_offset_days", 0))
-                c_time = _params.get("custom_time", "현재 시각")
-                if c_time != "현재 시각":
-                    try:
-                        hh, mm = map(int, c_time.split()[0].split(":"))
-                        base_dt = base_dt.replace(hour=hh, minute=mm, second=0, microsecond=0)
-                    except Exception:
-                        pass
-
                 return {
                     "bottle_id": _params["selected_bottle"],
-                    "timestamp": base_dt.isoformat(),
+                    "timestamp": compute_sim_timestamp(
+                        _params.get("date_offset_days", 0),
+                        _params.get("custom_time", "현재 시각"),
+                    ),
                     **imu,
                 }
 
@@ -258,6 +270,10 @@ with col_control:
                     )
                     return {
                         "bottle_id": _params["selected_bottle"],
+                        "timestamp": compute_sim_timestamp(
+                            _params.get("date_offset_days", 0),
+                            _params.get("custom_time", "현재 시각"),
+                        ),
                         **imu,
                     }
 
@@ -300,6 +316,10 @@ with col_status:
     st.write("**WebSocket 송신 JSON 패킷 미리보기**")
     packet = {
         "bottle_id": st.session_state.selected_bottle,
+        "timestamp": compute_sim_timestamp(
+            st.session_state.date_offset_days,
+            st.session_state.custom_time,
+        ),
         **sample_imu,
     }
     st.json(packet)
