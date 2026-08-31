@@ -1,5 +1,5 @@
 #!/bin/bash
-# 최근 3일간의 복용 이력 시드 데이터를 Docker MongoDB 컨테이너에 삽입하는 스크립트
+# 최근 3일간(9회) + 오늘 아침(1회) 총 10회 복용 이력 시드 데이터를 Docker MongoDB 컨테이너에 삽입하는 스크립트
 
 set -e
 
@@ -26,7 +26,7 @@ if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
   exit 1
 fi
 
-echo -e "${CYAN}[seed] 최근 3일치 복용 이력 데이터 삽입 중...${RESET}"
+echo -e "${CYAN}[seed] 최근 3일치 + 오늘 아침 복용 이력 데이터 삽입 중...${RESET}"
 docker exec -i "$CONTAINER_NAME" mongosh "$DB_NAME" --quiet < "$JS_FILE"
 
-echo -e "${GREEN}[seed] 완료! 최근 3일간 총 9회(조기 1, 지연 1, 정상 7) 복용 이력이 성공적으로 생성되었습니다.${RESET}"
+echo -e "${GREEN}[seed] 완료! 최근 3일(9회) + 오늘 아침(1회) 총 10회 복용 이력이 성공적으로 생성되었습니다.${RESET}"

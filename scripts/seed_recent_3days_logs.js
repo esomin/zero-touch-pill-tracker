@@ -1,8 +1,8 @@
-// med_tracker DB - 실행 당일 기준 최근 3일간(-3일 ~ -1일) 총 9회 복용 이력 동적 생성 스크립트
+// med_tracker DB - 최근 3일간(9회) + 오늘 아침(1회) 총 10회 복용 이력 동적 생성 스크립트
 // - 조기 복용(EARLY): 1회 (-80분)
 // - 지연 복용(LATE): 1회 (+75분)
-// - 정상 복용(ON_TIME): 7회 (설정 시각 기준 ±30분 이내 오차)
-// 언제 실행하든 실행 시점(now) 기준으로 어제(-1), 그저께(-2), 3일 전(-3) 날짜가 자동 계산됩니다.
+// - 정상 복용(ON_TIME): 8회 (설정 시각 기준 ±30분 이내 오차)
+// 언제 실행하든 실행 시점(now) 기준으로 날짜가 자동 동적 계산됩니다.
 
 db = db.getSiblingDB('med_tracker');
 
@@ -26,17 +26,17 @@ db = db.getSiblingDB('med_tracker');
     return new Date(targetUtcMs).toISOString();
   }
 
-  // 1. 실행일 기준 최근 3일(3일 전 00:00:00 ~ 오늘 00:00:00) 기존 데이터 중복 정리
+  // 1. 최근 3일 전 00:00:00 ~ 오늘 23:59:59 (내일 00:00:00 직전) 기존 데이터 중복 정리
   const startIso = getISOTime(3, 0, 0);
-  const endIso = getISOTime(0, 0, 0);
+  const endIso = getISOTime(-1, 0, 0);
   const deleteResult = db.medication_logs.deleteMany({
     taken_at: { $gte: startIso, $lt: endIso }
   });
   if (deleteResult.deletedCount > 0) {
-    print("Cleaned up " + deleteResult.deletedCount + " existing log(s) for the past 3 days.");
+    print("Cleaned up " + deleteResult.deletedCount + " existing log(s) for the past 3 days and today.");
   }
 
-  // 2. 동적 날짜가 적용된 9회 복용 이력 생성
+  // 2. 동적 날짜가 적용된 총 10회 복용 이력 생성
   const logs = [
     // ────────────── -3일 전 ──────────────
     {
@@ -114,9 +114,19 @@ db = db.getSiblingDB('med_tracker');
       status: "SUCCESS",
       compliance_status: "ON_TIME",
       diff_minutes: 8
+    },
+
+    // ────────────── 오늘 (1회 복용) ──────────────
+    {
+      bottle_id: "BOTTLE_01",
+      event_type: "settled",
+      taken_at: getISOTime(0, 8, 30),  // 오늘 아침 08:30 KST (설정 08:00 대비 +30분)
+      status: "SUCCESS",
+      compliance_status: "ON_TIME",
+      diff_minutes: 30
     }
   ];
 
   const result = db.medication_logs.insertMany(logs);
-  print("Inserted " + Object.keys(result.insertedIds).length + " medication logs successfully for past 3 days.");
+  print("Inserted " + Object.keys(result.insertedIds).length + " medication logs successfully (past 3 days + today).");
 })();
