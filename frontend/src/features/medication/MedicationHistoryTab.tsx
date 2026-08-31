@@ -129,7 +129,6 @@ export const MedicationHistoryTab: React.FC<MedicationHistoryTabProps> = ({
 
     // 현재 달
     for (let i = 1; i <= daysInMonth; i++) {
-      const dateObj = new Date(year, month, i);
       // 로컬 날짜 문자열 YYYY-MM-DD
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
       days.push({

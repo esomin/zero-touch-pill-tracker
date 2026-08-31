@@ -151,14 +151,12 @@ export function useWebBluetooth(): UseWebBluetoothReturn {
 
     try {
       let server = gattServerRef.current;
-      let device = deviceRef.current;
 
       // 만약 아직 연결이 안 되어 있다면 연결 시도
       if (!server || !server.connected) {
         const name = await connectBleDevice();
         if (!name) return false;
         server = gattServerRef.current;
-        device = deviceRef.current;
       }
 
       setStatus('sending');

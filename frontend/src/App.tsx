@@ -10,7 +10,7 @@ import { MedicationHistoryTab } from './features/medication/MedicationHistoryTab
 import { WifiProvisionModal } from './features/medication/WifiProvisionModal';
 import { AddBottleModal } from './features/medication/AddBottleModal';
 import { EditBottleModal } from './features/medication/EditBottleModal';
-import { IconWifi, IconPlus, IconTrash, IconX, IconAlertCircle, IconLoader2 } from '@tabler/icons-react';
+import { IconWifi, IconPlus, IconTrash, IconAlertCircle, IconLoader2 } from '@tabler/icons-react';
 
 const WS_URL = 'ws://localhost:8000/ws/user-1';
 

@@ -25,7 +25,7 @@ trap cleanup SIGINT SIGTERM
 
 # ── 1. MongoDB (Docker) ───────────────────────────────────────────────────────
 echo -e "${CYAN}[mongo ] Docker MongoDB 시작...${RESET}"
-docker compose -f "$ROOT/docker-compose.yml" up -d
+docker compose -f "$ROOT/compose-local.yml" up -d
 echo -e "${GREEN}[mongo ] 완료 (port 27017)${RESET}"
 
 # ── 2. Backend (FastAPI) ──────────────────────────────────────────────────────
