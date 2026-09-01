@@ -10,8 +10,9 @@ ENV VITE_API_URL=${VITE_API_URL} \
     VITE_WS_URL=${VITE_WS_URL}
 
 # 패키지 의존성 복사 및 설치
-COPY package.json package-lock.json ./
+COPY package*.json ./
 RUN npm ci
+
 
 # 소스 코드 복사 및 프로덕션 빌드
 COPY . .
