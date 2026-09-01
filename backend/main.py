@@ -11,15 +11,12 @@ app = FastAPI(title="Zero-Touch Pill Tracker API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",                              # Vite dev server
-        "https://handsfree-med-tracker.web.app",              # Firebase Hosting
-        "https://handsfree-med-tracker.firebaseapp.com",      # Firebase Hosting (대체 도메인)
-    ],
+    allow_origins=["*"],                                  # 로컬, 도커, 배포 서버(GCP VM), Firebase 등 모든 출처 허용
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # REST API 라우터 등록
 app.include_router(bottle.router, prefix="/api")
