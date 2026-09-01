@@ -100,7 +100,22 @@ docker compose up -d --build
 
 ---
 
+## 5단계. 초기 복용 이력 시드(Seed) 데이터 주입 (선택)
+
+최근 3일치(9회) + 오늘 아침(1회) 총 10건의 복용 이력을 주입하여 대시보드 통계 및 타임라인을 채웁니다.
+
+```bash
+# 방법 A) 클라우드 MongoDB Atlas 환경 (배포 서버)
+docker exec -i med-tracker-backend python seed_3days_logs.py
+
+# 방법 B) 로컬 MongoDB 컨테이너 환경 (로컬 개발)
+docker exec -i med-tracker-mongo mongosh med_tracker --quiet < scripts/seed_recent_3days_logs.js
+```
+
+---
+
 ## 방화벽 / 보안 그룹(Security Group) 설정
+
 
 클라우드 콘솔(GCP Firewall Rules 또는 AWS Security Group)에서 아래 인바운드 포트를 허용해야 정상 접속이 가능합니다:
 - **80 (TCP)**: 프론트엔드 웹 UI 접속
