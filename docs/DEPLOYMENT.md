@@ -42,17 +42,14 @@ cd zero-touch-pill-tracker
 cp .env.docker.example .env
 
 # 2) MongoDB Atlas 연결 문자열 치환 (복사한 Atlas 주소와 비밀번호 입력)
-sed -i 's#YOUR_MONGO_URI#mongodb+srv://admin:실제비밀번호@cluster0.xxxxx.mongodb.net/?appName=Cluster0#' .env
+sudo sed -i 's|YOUR_MONGO_URI|mongodb+srv://admin:실제비밀번호@cluster0.xxxxx.mongodb.net/?appName=Cluster0|' .env
 
 # 3) 서버 외부 공인 IP 치환 (실제 서버 공인 IP 입력)
-sed -i 's#YOUR_SERVER_IP#34.xxx.xxx.xxx#g' .env
+sudo sed -i 's|YOUR_SERVER_IP|34.xxx.xxx.xxx|g' .env
 
-# 4) (선택) 포트 80이 이미 사용 중인 경우 다른 포트(예: 8080)로 변경
-# .env.docker.example 기본값이 8080으로 지정되어 있으며, 변경 시:
-# sed -i 's#FRONTEND_PORT=8080#FRONTEND_PORT=8080#' .env
+# 4) (선택) 포트 3002가 이미 사용 중인 경우 다른 포트로 변경 시
+# sudo sed -i 's|FRONTEND_PORT=3002|FRONTEND_PORT=원하는포트|' .env
 ```
-
-> **포트 접근 주의**: `FRONTEND_PORT=8080`으로 배포할 경우, 브라우저에서 `http://<서버_IP>:8080`으로 접속해야 하며 GCP 방화벽(VPC 방화벽 규칙)에서 `tcp:8080` 포트가 열려 있어야 합니다.
 
 
 
