@@ -11,8 +11,8 @@ import { WifiProvisionModal } from './features/medication/WifiProvisionModal';
 import { AddBottleModal } from './features/medication/AddBottleModal';
 import { EditBottleModal } from './features/medication/EditBottleModal';
 import { IconWifi, IconPlus, IconTrash, IconAlertCircle, IconLoader2 } from '@tabler/icons-react';
-
-const WS_URL = 'ws://localhost:8000/ws/user-1';
+const WS_BASE = import.meta.env.VITE_WS_URL ?? 'ws://localhost:8000';
+const WS_URL = `${WS_BASE}/ws/user-1`;
 
 const tabBase: React.CSSProperties = {
   writingMode: 'vertical-rl',
