@@ -109,7 +109,7 @@ docker compose up -d --build
 docker exec -i med-tracker-backend python seed_3days_logs.py
 
 # 방법 B) 로컬 MongoDB 컨테이너 환경 (로컬 개발)
-docker exec -i med-tracker-mongo mongosh med_tracker --quiet < scripts/seed_recent_3days_logs.js
+docker exec -i med-tracker-mongo mongosh med_tracker --quiet < scripts/seed_3days_logs.js
 ```
 
 ---

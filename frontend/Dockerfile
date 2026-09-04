@@ -1,5 +1,5 @@
 # ── 1단계: 프론트엔드 빌드 ──────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ ENV VITE_API_URL=${VITE_API_URL} \
 
 # 패키지 의존성 복사 및 설치
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 
 # 소스 코드 복사 및 프로덕션 빌드

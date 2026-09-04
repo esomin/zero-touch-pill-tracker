@@ -19,7 +19,7 @@ docker exec -i med-tracker-backend python seed_3days_logs.py
 로컬 몽고 컨테이너(`med-tracker-mongo`)로 JS 스크립트를 직접 주입합니다:
 
 ```bash
-docker exec -i med-tracker-mongo mongosh med_tracker --quiet < scripts/seed_recent_3days_logs.js
+docker exec -i med-tracker-mongo mongosh med_tracker --quiet < scripts/seed_3days_logs.js
 ```
 
 ---
