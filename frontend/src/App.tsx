@@ -10,7 +10,9 @@ import { MedicationHistoryTab } from './features/medication/MedicationHistoryTab
 import { WifiProvisionModal } from './features/medication/WifiProvisionModal';
 import { AddBottleModal } from './features/medication/AddBottleModal';
 import { EditBottleModal } from './features/medication/EditBottleModal';
-import { IconWifi, IconPlus, IconTrash, IconAlertCircle, IconLoader2 } from '@tabler/icons-react';
+import { SensorDebugPanel } from './features/medication/SensorDebugPanel';
+import { IconWifi, IconPlus, IconTrash, IconAlertCircle, IconLoader2, IconActivity } from '@tabler/icons-react';
+import type { SensorReadingPayload } from './types';
 const WS_BASE = import.meta.env.VITE_WS_URL ?? 'ws://localhost:8000';
 const WS_URL = `${WS_BASE}/ws/user-1`;
 
@@ -74,6 +76,10 @@ function App() {
   const [editTargetBottle, setEditTargetBottle] = useState<Bottle | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 실시간 센서 디버그/데모 모드 토글 상태
+  const [isDebugMode, setIsDebugMode] = useState(true);
+  const [lastSensorReading, setLastSensorReading] = useState<SensorReadingPayload | null>(null);
 
   const [bottles, setBottles] = useState<Bottle[]>([]);
   const [logs, setLogs] = useState<MedicationLog[]>([]);
@@ -160,6 +166,14 @@ function App() {
   useEffect(() => {
     if (!lastEvent) return;
 
+    if (lastEvent.type === 'sensor_reading' && lastEvent.payload) {
+      setLastSensorReading(lastEvent.payload);
+      const bId = lastEvent.payload.bottle_id;
+      if (bId) {
+        setLastPulseTimes((prev) => ({ ...prev, [bId]: Date.now() }));
+      }
+    }
+
     if (lastEvent.type === 'sensor_pulse' && lastEvent.payload?.bottle_id) {
       const bId = lastEvent.payload.bottle_id;
       setLastPulseTimes((prev) => ({ ...prev, [bId]: Date.now() }));
@@ -203,6 +217,17 @@ function App() {
 
   const badge = STATUS_BADGE[status] || STATUS_BADGE.disconnected;
 
+  // 디버그 패널에 표시할 활성 약통 (최근 신호가 온 약통 또는 첫 번째 약통)
+  const activeBottle = useMemo(() => {
+    if (lastSensorReading?.bottle_id) {
+      const found = bottles.find((b) => b.bottle_id === lastSensorReading.bottle_id);
+      if (found) return found;
+    }
+    return bottles[0] || null;
+  }, [bottles, lastSensorReading]);
+
+  const activeBottleState = (activeBottle ? bottleStates[activeBottle.bottle_id] : 'idle') || 'idle';
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* 좌측 사이드바 탭 (TODAY / HISTORY) */}
@@ -230,15 +255,37 @@ function App() {
             <Badge color={badge.color} variant="light">{badge.label}</Badge>
           </div>
 
-          {/* 상단 기기 Wi-Fi/BLE 프로비저닝 세팅 버튼 */}
-          <button
-            type="button"
-            onClick={() => setIsWifiModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold !text-xs rounded-lg shadow-xs transition-all cursor-pointer"
-          >
-            <IconWifi size={16} />
-            <span>기기 Wi-Fi / BLE 설정</span>
-          </button>
+          {/* 상단 액션 버튼 그룹 */}
+          <div className="flex items-center gap-2">
+            {/* 실시간 센서 DEMO 모드 토글 스위치 */}
+            <button
+              type="button"
+              onClick={() => setIsDebugMode(!isDebugMode)}
+              className={`inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg !text-xs font-semibold border transition-all cursor-pointer shadow-2xs box-border ${
+                isDebugMode
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 hover:bg-indigo-100'
+                  : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <IconActivity size={16} className={isDebugMode ? 'text-indigo-600 animate-pulse' : 'text-gray-400'} />
+              <span>Sensor Demo Mode</span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isDebugMode ? 'bg-indigo-600' : 'bg-gray-300'
+                }`}
+              />
+            </button>
+
+            {/* 상단 기기 Wi-Fi/BLE 프로비저닝 세팅 버튼 */}
+            <button
+              type="button"
+              onClick={() => setIsWifiModalOpen(true)}
+              className="inline-flex items-center gap-2 px-3.5 h-9 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold !text-xs rounded-lg shadow-xs transition-all cursor-pointer box-border"
+            >
+              <IconWifi size={16} />
+              <span>기기 Wi-Fi / BLE 설정</span>
+            </button>
+          </div>
         </div>
 
         {/* 1. 하드웨어 Wi-Fi / BLE 설정 모달 */}
@@ -330,7 +377,7 @@ function App() {
 
         {/* 라우트 1 — TODAY 페이지 (`/#today` 또는 기본 경로) */}
         {currentPage === 'today' && (
-          <div>
+          <div className="space-y-4">
             {/* 상단 1열 가로 배치: 복약 순응도 대시보드 */}
             <AdherenceDashboard
               stats={stats}
@@ -387,6 +434,17 @@ function App() {
         {/* 라우트 2 — HISTORY 페이지 (`/#history`) */}
         {currentPage === 'history' && (
           <MedicationHistoryTab logs={logs} bottles={bottles} stats={stats} />
+        )}
+
+        {/* 전역 플로팅(Floating) 센서 FSM & 실시간 파형 모니터링 위젯 */}
+        {isDebugMode && (
+          <SensorDebugPanel
+            activeBottleId={activeBottle?.bottle_id ?? 'BOTTLE_01'}
+            bottleName={activeBottle?.name}
+            currentState={activeBottleState}
+            lastReading={lastSensorReading}
+            onClose={() => setIsDebugMode(false)}
+          />
         )}
       </div>
     </div>

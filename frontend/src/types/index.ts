@@ -5,7 +5,19 @@ export type SensorEventType =
   | 'bottle_state_changed'
   | 'tumbler_state_changed'
   | 'equipment_detected'
-  | 'sensor_pulse';
+  | 'sensor_pulse'
+  | 'sensor_reading';
+
+export type SensorReadingPayload = {
+  bottle_id: string;
+  acc_x: number;
+  acc_y: number;
+  acc_z: number;
+  accel_magnitude: number;
+  gyro_magnitude: number;
+  state_deg: number;
+  timestamp: string;
+};
 
 export type WebSocketMessage<T = unknown> = {
   type: SensorEventType;
@@ -67,7 +79,8 @@ export type WebSocketEvent =
   | { type: 'bottle_state_changed'; payload: BottleStatePayload }
   | { type: 'tumbler_state_changed'; payload: { state: string } }
   | { type: 'equipment_detected'; payload: { equipmentName: string } }
-  | { type: 'sensor_pulse'; payload: { bottle_id: string; timestamp: string } };
+  | { type: 'sensor_pulse'; payload: { bottle_id: string; timestamp: string } }
+  | { type: 'sensor_reading'; payload: SensorReadingPayload };
 
 export type UseWebSocketReturn = {
   status: WebSocketStatus;

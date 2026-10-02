@@ -135,7 +135,7 @@ async def handle_sensor_stream(ws: WebSocket, user_id: str) -> None:
             )
             session_cache.touch(user_id)
 
-            # ── 3. 센서 스트리밍 핑(sensor_pulse, 1초 1회) Broadcast ───────────
+            # ── 3. 센서 스트리밍 핑(sensor_pulse) & 실시간 디버그용 센서 데이터 Broadcast ─
             now_ts = datetime.now(timezone.utc)
             now_sec = now_ts.timestamp()
             last_pulse = getattr(session, f"last_pulse_{bottle_id}", 0)
@@ -145,6 +145,25 @@ async def handle_sensor_stream(ws: WebSocket, user_id: str) -> None:
                     "type": "sensor_pulse",
                     "payload": {
                         "bottle_id": bottle_id,
+                        "timestamp": ts.isoformat(),
+                    },
+                    "timestamp": ts.isoformat(),
+                })
+
+            # 실시간 디버그 모니터링용 센서 샘플 (약 10Hz = 0.1초마다 프론트엔드로 브로드캐스트)
+            last_debug_emit = getattr(session, f"last_debug_{bottle_id}", 0)
+            if (now_sec - last_debug_emit) >= 0.1:
+                setattr(session, f"last_debug_{bottle_id}", now_sec)
+                await manager.broadcast(user_id, {
+                    "type": "sensor_reading",
+                    "payload": {
+                        "bottle_id": bottle_id,
+                        "acc_x": round(f_acc_x, 2),
+                        "acc_y": round(f_acc_y, 2),
+                        "acc_z": round(f_acc_z, 2),
+                        "accel_magnitude": round(f_accel, 2),
+                        "gyro_magnitude": round(f_gyro, 2),
+                        "state_deg": state_deg,
                         "timestamp": ts.isoformat(),
                     },
                     "timestamp": ts.isoformat(),
