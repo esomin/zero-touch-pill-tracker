@@ -28,10 +28,11 @@ const MAX_HISTORY = 40;
 
 const STATE_CONFIG: Record<
   BottleState,
-  { label: string; color: string; bg: string; border: string; desc: string; step: number }
+  { code: string; labelKo: string; color: string; bg: string; border: string; desc: string; step: number }
 > = {
   idle: {
-    label: 'IDLE (보관 중)',
+    code: 'IDLE',
+    labelKo: '보관 중',
     color: 'text-slate-600',
     bg: 'bg-slate-100',
     border: 'border-slate-300',
@@ -39,7 +40,8 @@ const STATE_CONFIG: Record<
     step: 1,
   },
   moving: {
-    label: 'MOVING (약통 이동 중)',
+    code: 'MOVING',
+    labelKo: '약통 이동 중',
     color: 'text-amber-700',
     bg: 'bg-amber-50',
     border: 'border-amber-300',
@@ -47,7 +49,8 @@ const STATE_CONFIG: Record<
     step: 2,
   },
   pouring: {
-    label: 'POURING (알약 털어넣기)',
+    code: 'POURING',
+    labelKo: '알약 털어넣기',
     color: 'text-rose-700',
     bg: 'bg-rose-50',
     border: 'border-rose-400',
@@ -55,7 +58,8 @@ const STATE_CONFIG: Record<
     step: 3,
   },
   settled: {
-    label: 'SETTLED (거치 완료 / 복용 판정)',
+    code: 'SETTLED',
+    labelKo: '거치 완료',
     color: 'text-teal-700',
     bg: 'bg-teal-50',
     border: 'border-teal-400',
@@ -65,7 +69,7 @@ const STATE_CONFIG: Record<
 };
 
 export const SensorDebugPanel: React.FC<SensorDebugPanelProps> = ({
-  activeBottleId = 'BOTTLE_01',
+  activeBottleId,
   bottleName,
   currentState,
   lastReading,
@@ -144,29 +148,27 @@ export const SensorDebugPanel: React.FC<SensorDebugPanelProps> = ({
   return (
     <div className="fixed bottom-6 right-6 z-40 max-w-[95vw] w-[calc(100vw-3rem)] sm:w-[780px] bg-white/95 backdrop-blur-md border border-indigo-200 rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden ring-1 ring-black/5 animate-fade-in">
       {/* 헤더 & 기기 정보 & 윈도우 컨트롤 */}
-      <div className="px-5 py-3.5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between gap-3 border-b border-indigo-900/40 select-none">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600/80 text-white flex items-center justify-center shadow-xs">
-            <IconActivity size={18} className="animate-pulse text-indigo-200" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-bold text-slate-100 tracking-wide">
-                실시간 센서 FSM Demo View
-              </h3>
-              <span className="font-mono text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-semibold">
+      <div className="px-5 py-3.5 bg-white border-b border-gray-100 flex items-center justify-between gap-3 select-none">
+        <div className="flex items-center gap-2.5">
+          <IconActivity size={18} className="text-indigo-600 animate-pulse shrink-0" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-sm font-bold text-gray-800 tracking-tight">
+              실시간 센서 FSM Demo View
+            </h3>
+            {activeBottleId && (
+              <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold">
                 {activeBottleId} {bottleName ? `(${bottleName})` : ''}
               </span>
-            </div>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           {/* 최소화/펼치기 버튼 */}
           <button
             type="button"
             onClick={() => setIsMinimized(!isMinimized)}
-            className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
             title={isMinimized ? '창 펼치기' : '창 최소화'}
           >
             {isMinimized ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}
@@ -177,7 +179,7 @@ export const SensorDebugPanel: React.FC<SensorDebugPanelProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-md text-slate-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
+              className="p-1.5 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
               title="DEMO 모드 닫기"
             >
               <IconX size={18} />
@@ -191,8 +193,11 @@ export const SensorDebugPanel: React.FC<SensorDebugPanelProps> = ({
         <div className="px-5 py-3 bg-white flex items-center justify-between text-sm">
           <div className="flex items-center gap-2.5">
             <span className="text-xs text-gray-500">현재 상태:</span>
-            <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${STATE_CONFIG[currentState]?.bg} ${STATE_CONFIG[currentState]?.color} border ${STATE_CONFIG[currentState]?.border}`}>
-              {STATE_CONFIG[currentState]?.label || currentState}
+            <span className={`px-2.5 py-0.5 rounded text-xs font-bold inline-flex items-center gap-1.5 ${STATE_CONFIG[currentState]?.bg} ${STATE_CONFIG[currentState]?.color} border ${STATE_CONFIG[currentState]?.border}`}>
+              <span>{STATE_CONFIG[currentState]?.code || currentState}</span>
+              <span className="text-[11px] font-normal text-gray-500">
+                {STATE_CONFIG[currentState]?.labelKo}
+              </span>
             </span>
           </div>
           <div className="font-mono text-xs text-gray-500">
@@ -227,8 +232,13 @@ export const SensorDebugPanel: React.FC<SensorDebugPanelProps> = ({
                       </span>
                     )}
                   </div>
-                  <div className={`text-xs font-bold mt-1 ${isActive ? 'text-indigo-950' : 'text-gray-600'}`}>
-                    {item.label}
+                  <div className="flex items-baseline gap-1.5 mt-1">
+                    <span className={`text-xs font-bold tracking-tight ${isActive ? 'text-indigo-950' : 'text-gray-700'}`}>
+                      {item.code}
+                    </span>
+                    <span className={`text-[11px] font-normal ${isActive ? 'text-indigo-700/80 font-medium' : 'text-gray-400'}`}>
+                      {item.labelKo}
+                    </span>
                   </div>
                   <div className={`text-[10px] mt-1 line-clamp-2 leading-tight ${isActive ? 'text-indigo-800/80 font-medium' : 'text-gray-500'}`}>
                     {item.desc}

@@ -171,10 +171,10 @@ function App() {
       const bId = lastEvent.payload.bottle_id;
       if (bId) {
         setLastPulseTimes((prev) => ({ ...prev, [bId]: Date.now() }));
-        // 수직 보관 중(0도/9.8m/s²)일 때 상태가 moving 또는 settled에 머물러 있다면 자연스럽게 idle로 동기화
+        // 수직 보관 중(0도/9.8m/s²)일 때, 오직 moving 상태에 멈춰있을 때만 idle로 보정 (settled는 8초간 유지)
         if (lastEvent.payload.state_deg === 0 && lastEvent.payload.acc_z >= 8.5) {
           setBottleStates((prev) => {
-            if (prev[bId] === 'moving' || prev[bId] === 'settled') {
+            if (prev[bId] === 'moving') {
               return { ...prev, [bId]: 'idle' };
             }
             return prev;
@@ -194,10 +194,10 @@ function App() {
       setBottleStates((prev) => ({ ...prev, [bId]: 'settled' }));
       loadData();
 
-      // 복용 완료 4단계(SETTLED)를 3초간 보여준 후, 다음 복용을 위해 1단계(IDLE)로 자연스럽게 전환
+      // 복용 완료 4단계(SETTLED)를 8초간 충분히 보여준 후, 다음 복용을 위해 1단계(IDLE)로 자연스럽게 전환
       setTimeout(() => {
         setBottleStates((prev) => (prev[bId] === 'settled' ? { ...prev, [bId]: 'idle' } : prev));
-      }, 3000);
+      }, 8000);
     }
 
     if (lastEvent.type === 'bottle_state_changed') {
@@ -211,10 +211,10 @@ function App() {
       }
       if (state === 'settled') {
         loadData();
-        // settled 상태 도달 후 3초 뒤 idle로 전환
+        // settled 상태 도달 후 8초 뒤 idle로 전환
         setTimeout(() => {
           setBottleStates((prev) => (prev[bottleId] === 'settled' ? { ...prev, [bottleId]: 'idle' } : prev));
-        }, 3000);
+        }, 8000);
       }
     }
   }, [lastEvent, loadData]);
@@ -236,13 +236,14 @@ function App() {
 
   const badge = STATUS_BADGE[status] || STATUS_BADGE.disconnected;
 
-  // 디버그 패널에 표시할 활성 약통 (최근 신호가 온 약통 또는 첫 번째 약통)
+  // 디버그 패널에 표시할 활성 약통 (신호가 도착한 약통만 바인딩, 처음 열렸을 때는 비워둠)
   const activeBottle = useMemo(() => {
     if (lastSensorReading?.bottle_id) {
       const found = bottles.find((b) => b.bottle_id === lastSensorReading.bottle_id);
       if (found) return found;
+      return { bottle_id: lastSensorReading.bottle_id, name: '' } as any;
     }
-    return bottles[0] || null;
+    return null;
   }, [bottles, lastSensorReading]);
 
   const activeBottleState = (activeBottle ? bottleStates[activeBottle.bottle_id] : 'idle') || 'idle';
@@ -458,7 +459,7 @@ function App() {
         {/* 전역 플로팅(Floating) 센서 FSM & 실시간 파형 모니터링 위젯 */}
         {isDebugMode && (
           <SensorDebugPanel
-            activeBottleId={activeBottle?.bottle_id ?? 'BOTTLE_01'}
+            activeBottleId={activeBottle?.bottle_id}
             bottleName={activeBottle?.name}
             currentState={activeBottleState}
             lastReading={lastSensorReading}
