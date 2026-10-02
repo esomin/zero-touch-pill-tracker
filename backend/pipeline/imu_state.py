@@ -87,24 +87,34 @@ def detect_medication_intake(window: deque[SensorReading]) -> bool:
     return (valid_count / INTAKE_SUSTAINED_SAMPLES) >= 0.50
 
 
+# 빠른 상태 전이(안정화 판정)를 위한 최소 윈도우 크기 (0.3초 = 15샘플)
+MIN_EVAL_WINDOW = 15
+
 def detect_bottle_state(sensor_window: deque[SensorReading]) -> BottleState:
     """
     슬라이딩 윈도우 내 센서 값으로 약통의 움직임/거치 상태를 판별한다.
     """
-    if len(sensor_window) < WINDOW_SIZE:
-        return 'moving'
+    if len(sensor_window) < MIN_EVAL_WINDOW:
+        return 'settled' if len(sensor_window) == 0 else 'moving'
 
     readings = list(sensor_window)
 
-    # 최근 센서독출 중 110도 털어넣는 중인지 검사
+    # 1. 최근 센서독출 중 110도 털어넣는 중인지 검사
     latest = readings[-1]
     if latest.acc_z < POURING_ACC_Z_MAX and math.sqrt(latest.acc_x**2 + latest.acc_y**2) > POURING_ACC_XY_MIN:
         return 'pouring'
 
-    accel_dev_mean = sum(abs(r.accel_magnitude - 1.0) for r in readings) / len(readings)
-    gyro_values = [r.gyro_magnitude for r in readings]
+    # 2. 최근 0.4초(20개) 샘플의 안정도 검사 (통을 내려놓았을 때 즉시 settled/idle로 복귀)
+    recent_eval = readings[-min(len(readings), 25):]
+    accel_dev_mean = sum(abs(r.accel_magnitude - 1.0) for r in recent_eval) / len(recent_eval)
+    gyro_values = [r.gyro_magnitude for r in recent_eval]
     gyro_mean = sum(gyro_values) / len(gyro_values)
     gyro_var = sum((v - gyro_mean) ** 2 for v in gyro_values) / len(gyro_values)
+
+    # 중력 가속도(Z축)가 9.0 이상(0도 거치 상태)이고 잔진동이 낮으면 즉시 거치(settled)
+    is_upright = latest.acc_z >= 8.5 and abs(latest.acc_x) < 3.0 and abs(latest.acc_y) < 3.0
+    if is_upright and accel_dev_mean <= MOVE_ACCEL_THRESHOLD and gyro_var <= MOVE_GYRO_VAR:
+        return 'settled'
 
     if accel_dev_mean > MOVE_ACCEL_THRESHOLD or gyro_var > MOVE_GYRO_VAR:
         return 'moving'

@@ -171,6 +171,15 @@ function App() {
       const bId = lastEvent.payload.bottle_id;
       if (bId) {
         setLastPulseTimes((prev) => ({ ...prev, [bId]: Date.now() }));
+        // 수직 보관 중(0도/9.8m/s²)일 때 상태가 moving 또는 settled에 머물러 있다면 자연스럽게 idle로 동기화
+        if (lastEvent.payload.state_deg === 0 && lastEvent.payload.acc_z >= 8.5) {
+          setBottleStates((prev) => {
+            if (prev[bId] === 'moving' || prev[bId] === 'settled') {
+              return { ...prev, [bId]: 'idle' };
+            }
+            return prev;
+          });
+        }
       }
     }
 
@@ -182,7 +191,13 @@ function App() {
     if (lastEvent.type === 'medication_taken' && lastEvent.payload?.bottle_id) {
       const bId = lastEvent.payload.bottle_id;
       setLastPulseTimes((prev) => ({ ...prev, [bId]: Date.now() }));
+      setBottleStates((prev) => ({ ...prev, [bId]: 'settled' }));
       loadData();
+
+      // 복용 완료 4단계(SETTLED)를 3초간 보여준 후, 다음 복용을 위해 1단계(IDLE)로 자연스럽게 전환
+      setTimeout(() => {
+        setBottleStates((prev) => (prev[bId] === 'settled' ? { ...prev, [bId]: 'idle' } : prev));
+      }, 3000);
     }
 
     if (lastEvent.type === 'bottle_state_changed') {
@@ -196,6 +211,10 @@ function App() {
       }
       if (state === 'settled') {
         loadData();
+        // settled 상태 도달 후 3초 뒤 idle로 전환
+        setTimeout(() => {
+          setBottleStates((prev) => (prev[bottleId] === 'settled' ? { ...prev, [bottleId]: 'idle' } : prev));
+        }, 3000);
       }
     }
   }, [lastEvent, loadData]);
