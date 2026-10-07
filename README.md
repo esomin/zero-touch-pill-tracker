@@ -73,7 +73,57 @@
 |  | (Bottle Status & Adherence Stats)|  | (Push Warning & Notif)    |  |
 |  +----------------------------------+  +---------------------------+  |
 +-----------------------------------------------------------------------+
+```
 
+### 3.1. Detailed Data Flow Architecture (상세 데이터 흐름도)
+
+```mermaid
+---
+config:
+  theme: redux
+  look: neo
+---
+flowchart LR
+    %% 전체를 감싸는 캔버스 역할 서브그래프
+    subgraph Canvas[" "]
+        direction LR
+
+        subgraph Client["Client Layer (Edge & UI)"]
+            Sim["ESP32-C3 Sensor Device /<br/>Streamlit Simulator"]
+            WebApp["React Web Dashboard<br/>(Vite + Tailwind)"]
+        end
+
+        subgraph Backend["Backend Layer (FastAPI Server)"]
+            WS["WebSocket Connection Manager<br/>(/ws/{user_id})"]
+            REST["REST API Routers<br/>(/api/bottles, /api/logs)"]
+
+            subgraph Core["Core Logic Engine"]
+                Filter["EMA Noise Filter & Preprocessing<br/>(noise_filter.py)"]
+                StateEngine["IMU State Machine & Intake Detector<br/>(idle → moving → pouring → settled)"]
+                Compliance["Compliance Evaluator<br/>(Target vs Taken Time)"]
+            end
+
+            StateManager["In-Memory State & Session Manager<br/>(Sliding Window Deque & Cooldown)"]
+        end
+
+        subgraph DB_Layer["Database Layer (MongoDB)"]
+            DB[("MongoDB Database<br/>• bottles<br/>• medication_logs")]
+        end
+
+        Sim -- "1. 6-Axis IMU Stream & Bottle ID (WebSocket)" --> WS
+        WS -- "2. Stream Data Pipe" --> Filter
+        Filter -- "3. Denoised 3-Axis & Magnitude" --> StateEngine
+        StateEngine -- "4. State Transition & Intake Detection" --> StateManager
+        StateManager -- "5. Real-time Events (Pulse / State / Intake)" --> WS
+        WS -- "6. Real-time Telemetry & Intake Alert (WS)" --> WebApp
+        StateManager --> Compliance
+        Compliance -. "7. Async Persist (Intake Log & Compliance Status)" .-> DB
+        WebApp <--> |"8. REST API (Adherence Stats & Bottle Config)"| REST
+        REST <--> DB
+    end
+
+    %% Canvas 배경을 흰색으로 지정하고 테두리를 없앰
+    style Canvas fill:#ffffff,stroke:none
 ```
 
 ---
