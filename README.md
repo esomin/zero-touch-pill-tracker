@@ -80,50 +80,45 @@
 ```mermaid
 ---
 config:
-  theme: redux
+  theme: base
   look: neo
+  layout: dagre
 ---
-flowchart LR
-    %% 전체를 감싸는 캔버스 역할 서브그래프
+flowchart TD
     subgraph Canvas[" "]
-        direction LR
+        direction TD
 
-        subgraph Client["Client Layer (Edge & UI)"]
-            Sim["ESP32-C3 Sensor Device /<br/>Streamlit Simulator"]
-            WebApp["React Web Dashboard<br/>(Vite + Tailwind)"]
+        subgraph Bottles["Smart Bottles (Multi-Device)"]
+            IMU["6-Axis Gyro & Accel Sensor"]
+            MCU["ESP32-C3 / Simulator"]
+            IMU --> MCU
         end
 
-        subgraph Backend["Backend Layer (FastAPI Server)"]
-            WS["WebSocket Connection Manager<br/>(/ws/{user_id})"]
-            REST["REST API Routers<br/>(/api/bottles, /api/logs)"]
+        subgraph Backend["Backend (FastAPI Server)"]
+            WS["WebSocket Handler"]
+            Pipeline["Data Pipeline & State Machine"]
+            Cache["In-Memory Session Cache"]
+            DB[("MongoDB Database")]
+            REST["REST API Router"]
 
-            subgraph Core["Core Logic Engine"]
-                Filter["EMA Noise Filter & Preprocessing<br/>(noise_filter.py)"]
-                StateEngine["IMU State Machine & Intake Detector<br/>(idle → moving → pouring → settled)"]
-                Compliance["Compliance Evaluator<br/>(Target vs Taken Time)"]
-            end
-
-            StateManager["In-Memory State & Session Manager<br/>(Sliding Window Deque & Cooldown)"]
+            WS --> Pipeline
+            Pipeline --> Cache
+            Cache -. "Async Persist" .-> DB
+            REST <--> DB
         end
 
-        subgraph DB_Layer["Database Layer (MongoDB)"]
-            DB[("MongoDB Database<br/>• bottles<br/>• medication_logs")]
+        subgraph Frontend["Frontend App (React)"]
+            Dashboard["Dashboard & Real-Time Logs"]
+            Adherence["Adherence Stats & Alerts"]
         end
 
-        Sim -- "1. 6-Axis IMU Stream & Bottle ID (WebSocket)" --> WS
-        WS -- "2. Stream Data Pipe" --> Filter
-        Filter -- "3. Denoised 3-Axis & Magnitude" --> StateEngine
-        StateEngine -- "4. State Transition & Intake Detection" --> StateManager
-        StateManager -- "5. Real-time Events (Pulse / State / Intake)" --> WS
-        WS -- "6. Real-time Telemetry & Intake Alert (WS)" --> WebApp
-        StateManager --> Compliance
-        Compliance -. "7. Async Persist (Intake Log & Compliance Status)" .-> DB
-        WebApp <--> |"8. REST API (Adherence Stats & Bottle Config)"| REST
-        REST <--> DB
+        MCU -- "1. Real-time Sensor Stream (WebSocket)" --> WS
+        Cache -- "2. State & Intake Events" --> WS
+        WS -- "3. Real-time Feedback (WebSocket)" --> Dashboard
+        Adherence <--> |"4. REST API"| REST
     end
 
-    %% Canvas 배경을 흰색으로 지정하고 테두리를 없앰
-    style Canvas fill:#ffffff,stroke:none
+    style Canvas fill:#fffffffc,stroke:none
 ```
 
 ---
