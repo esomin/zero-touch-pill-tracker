@@ -80,7 +80,7 @@
 ```mermaid
 ---
 config:
-  theme: base
+  theme: redux
   look: neo
   layout: dagre
 ---
@@ -119,6 +119,9 @@ flowchart TD
     end
 
     style Canvas fill:#fffffffc,stroke:none
+    classDef primary fill:#eef2ff,stroke:#818cf8,stroke-width:3px
+    class MCU,WS,Pipeline,Cache,Dashboard primary
+    linkStyle 1,2,5,6,7 stroke:#818cf8,stroke-width:3px
 ```
 
 ---
